@@ -8,7 +8,7 @@ use serde::Serialize;
 /// Synchronously sends requests to the Cloudflare API.
 pub trait ApiClient {
     /// Synchronously send a request to the Cloudflare API.
-    fn request<ResultType, QueryType, BodyType>(
+    fn request<ResultType: 'static, QueryType, BodyType>(
         &self,
         endpoint: &dyn Endpoint<ResultType, QueryType, BodyType>,
     ) -> ApiResponse<ResultType>

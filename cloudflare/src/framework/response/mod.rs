@@ -2,6 +2,8 @@ extern crate reqwest;
 extern crate serde_json;
 mod apifail;
 
+use std::any::TypeId;
+use std::mem::{transmute_copy};
 pub use apifail::*;
 use serde_json::value::Value as JsonValue;
 
@@ -20,9 +22,20 @@ pub type ApiResponse<ResultType> = Result<ApiSuccess<ResultType>, ApiFailure>;
 // If the response is 200 and parses, return Success.
 // If the response is 200 and doesn't parse, return Invalid.
 // If the response isn't 200, return Failure, with API errors if they were included.
-pub fn map_api_response<ResultType: ApiResult>(
+pub unsafe fn map_api_response<ResultType: ApiResult + 'static>(
     resp: reqwest::blocking::Response,
 ) -> ApiResponse<ResultType> {
+    if TypeId::of::<ResultType>() == TypeId::of::<String>() {
+        return Ok(ApiSuccess::<ResultType> {
+            result: match resp.text() {
+                Ok(api_resp) => transmute_copy::<String, ResultType>(&api_resp),
+                Err(e) => return Err(ApiFailure::Invalid(e)),
+            },
+            result_info: None,
+            messages: JsonValue::Object(Default::default()),
+            errors: vec![],
+        })
+    }
     let status = resp.status();
     if status.is_success() {
         let parsed: Result<ApiSuccess<ResultType>, reqwest::Error> = resp.json();
@@ -39,6 +52,8 @@ pub fn map_api_response<ResultType: ApiResult>(
 
 /// Some endpoints return nothing. That's OK.
 impl ApiResult for () {}
+
+impl ApiResult for String {}
 
 #[cfg(test)]
 mod tests {

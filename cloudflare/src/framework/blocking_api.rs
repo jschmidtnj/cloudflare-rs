@@ -31,7 +31,7 @@ impl HttpApiClient {
 // TODO: It should also probably be called `ReqwestApiClient` rather than `HttpApiClient`.
 impl<'a> ApiClient for HttpApiClient {
     /// Synchronously send a request to the Cloudflare API.
-    fn request<ResultType, QueryType, BodyType>(
+    fn request<ResultType: 'static, QueryType, BodyType>(
         &self,
         endpoint: &dyn endpoint::Endpoint<ResultType, QueryType, BodyType>,
     ) -> response::ApiResponse<ResultType>
@@ -58,7 +58,9 @@ impl<'a> ApiClient for HttpApiClient {
 
         let response = request.send()?;
 
-        map_api_response(response)
+        unsafe {
+            map_api_response(response)
+        }
     }
 }
 

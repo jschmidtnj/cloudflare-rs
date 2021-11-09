@@ -1,4 +1,3 @@
-use crate::framework::response::ApiResult;
 use crate::framework::endpoint::{Endpoint, Method};
 
 /// Read Key Value
@@ -11,10 +10,7 @@ pub struct Read<'a> {
     pub key: &'a str,
 }
 
-type Value = String;
-impl ApiResult for Value {}
-
-impl<'a> Endpoint<Value> for Read<'a> {
+impl<'a> Endpoint<String> for Read<'a> {
     fn method(&self) -> Method {
         Method::Get
     }
