@@ -2,12 +2,10 @@ extern crate reqwest;
 extern crate serde_json;
 mod apifail;
 
-use std::any::TypeId;
-use std::mem::{transmute_copy};
 pub use apifail::*;
 use serde_json::value::Value as JsonValue;
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct ApiSuccess<ResultType> {
     pub result: ResultType,
     pub result_info: Option<JsonValue>,
@@ -22,20 +20,9 @@ pub type ApiResponse<ResultType> = Result<ApiSuccess<ResultType>, ApiFailure>;
 // If the response is 200 and parses, return Success.
 // If the response is 200 and doesn't parse, return Invalid.
 // If the response isn't 200, return Failure, with API errors if they were included.
-pub unsafe fn map_api_response<ResultType: ApiResult + 'static>(
+pub fn map_api_response<ResultType: ApiResult>(
     resp: reqwest::blocking::Response,
 ) -> ApiResponse<ResultType> {
-    if TypeId::of::<ResultType>() == TypeId::of::<String>() {
-        return Ok(ApiSuccess::<ResultType> {
-            result: match resp.text() {
-                Ok(api_resp) => transmute_copy::<String, ResultType>(&api_resp),
-                Err(e) => return Err(ApiFailure::Invalid(e)),
-            },
-            result_info: None,
-            messages: JsonValue::Object(Default::default()),
-            errors: vec![],
-        })
-    }
     let status = resp.status();
     if status.is_success() {
         let parsed: Result<ApiSuccess<ResultType>, reqwest::Error> = resp.json();
@@ -43,6 +30,27 @@ pub unsafe fn map_api_response<ResultType: ApiResult + 'static>(
             Ok(api_resp) => Ok(api_resp),
             Err(e) => Err(ApiFailure::Invalid(e)),
         }
+    } else {
+        let parsed: Result<ApiErrors, reqwest::Error> = resp.json();
+        let errors = parsed.unwrap_or_default();
+        Err(ApiFailure::Error(status, errors))
+    }
+}
+
+pub fn map_api_response_text(
+    resp: reqwest::blocking::Response,
+) -> ApiResponse<String> {
+    let status = resp.status();
+    if status.is_success() {
+        return Ok(ApiSuccess::<String> {
+            result: match resp.text() {
+                Ok(api_resp) => api_resp,
+                Err(e) => return Err(ApiFailure::Invalid(e)),
+            },
+            result_info: None,
+            messages: JsonValue::Object(Default::default()),
+            errors: vec![],
+        })
     } else {
         let parsed: Result<ApiErrors, reqwest::Error> = resp.json();
         let errors = parsed.unwrap_or_default();

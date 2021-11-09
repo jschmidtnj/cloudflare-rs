@@ -7,7 +7,7 @@ use std::fmt;
 use std::fmt::Debug;
 /// Note that APIError's `eq` implementation only compares `code` and `message`.
 /// It does NOT compare the `other` values.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ApiError {
     pub code: u16,
     pub message: String,

@@ -14,7 +14,7 @@ use cfg_if::cfg_if;
 
 #[async_trait]
 pub trait ApiClient {
-    async fn request<ResultType: 'static, QueryType, BodyType>(
+    async fn request<ResultType, QueryType, BodyType>(
         &self,
         endpoint: &(dyn Endpoint<ResultType, QueryType, BodyType> + Send + Sync),
     ) -> ApiResponse<ResultType>
@@ -100,7 +100,7 @@ impl Client {
 #[cfg(not(target_arch = "wasm32"))]
 #[async_trait]
 impl ApiClient for Client {
-    async fn request<ResultType: 'static, QueryType, BodyType>(
+    async fn request<ResultType, QueryType, BodyType>(
         &self,
         endpoint: &(dyn Endpoint<ResultType, QueryType, BodyType> + Send + Sync),
     ) -> ApiResponse<ResultType>

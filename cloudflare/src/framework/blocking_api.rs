@@ -7,6 +7,7 @@ use crate::framework::{
     apiclient::ApiClient, auth, auth::AuthClient, endpoint, response, response::map_api_response,
     Environment, HttpApiClient, HttpApiClientConfig,
 };
+use crate::framework::response::map_api_response_text;
 
 impl HttpApiClient {
     pub fn new(
@@ -31,7 +32,7 @@ impl HttpApiClient {
 // TODO: It should also probably be called `ReqwestApiClient` rather than `HttpApiClient`.
 impl<'a> ApiClient for HttpApiClient {
     /// Synchronously send a request to the Cloudflare API.
-    fn request<ResultType: 'static, QueryType, BodyType>(
+    fn request<ResultType, QueryType, BodyType>(
         &self,
         endpoint: &dyn endpoint::Endpoint<ResultType, QueryType, BodyType>,
     ) -> response::ApiResponse<ResultType>
@@ -58,9 +59,36 @@ impl<'a> ApiClient for HttpApiClient {
 
         let response = request.send()?;
 
-        unsafe {
-            map_api_response(response)
+        map_api_response(response)
+    }
+
+    fn request_text<QueryType, BodyType>(
+        &self,
+        endpoint: &dyn endpoint::Endpoint<String, QueryType, BodyType>,
+    ) -> response::ApiResponse<String>
+        where
+            QueryType: Serialize,
+            BodyType: Serialize,
+    {
+        // Build the request
+        let mut request = self
+            .http_client
+            .request(
+                match_reqwest_method(endpoint.method()),
+                endpoint.url(&self.environment),
+            )
+            .query(&endpoint.query());
+
+        if let Some(body) = endpoint.body() {
+            request = request.body(serde_json::to_string(&body).unwrap());
+            request = request.header(reqwest::header::CONTENT_TYPE, endpoint.content_type());
         }
+
+        request = request.auth(&self.credentials);
+
+        let response = request.send()?;
+
+        map_api_response_text(response)
     }
 }
 

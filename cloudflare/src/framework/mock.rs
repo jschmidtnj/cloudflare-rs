@@ -39,17 +39,24 @@ fn mock_response() -> ApiFailure {
 }
 
 impl ApiClient for MockApiClient {
-    fn request<ResultType: 'static, QueryType, BodyType>(
+    fn request<ResultType, QueryType, BodyType>(
         &self,
         _endpoint: &dyn Endpoint<ResultType, QueryType, BodyType>,
     ) -> ApiResponse<ResultType> {
+        Err(mock_response())
+    }
+
+    fn request_text<QueryType, BodyType>(
+        &self,
+        _endpoint: &dyn Endpoint<String, QueryType, BodyType>,
+    ) -> ApiResponse<String> {
         Err(mock_response())
     }
 }
 
 #[async_trait]
 impl async_api::ApiClient for MockApiClient {
-    async fn request<ResultType: 'static, QueryType, BodyType>(
+    async fn request<ResultType, QueryType, BodyType>(
         &self,
         _endpoint: &(dyn Endpoint<ResultType, QueryType, BodyType> + Send + Sync),
     ) -> ApiResponse<ResultType> {
